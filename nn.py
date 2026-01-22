@@ -1,4 +1,5 @@
 import math
+import random
 
 class Value:
     def __init__(self, data, label="", _childern = (), _op = '') -> None:
@@ -83,7 +84,7 @@ class Value:
     def __rsub__(self, other):
         return self - other
     
-    def __div__(self, other):
+    def __truediv__(self, other):
         if not isinstance(other, Value):
             other = Value(other)
         
@@ -104,16 +105,16 @@ class Value:
         return out
 
     def __pow__(self, other): # self ** other
-        if not isinstance(other, Value):
-            other = Value(other)
+        if not isinstance(other, (int, float)):  # for now, x in base only 
+            raise TypeError
         
-        out = Value(self.data ** other.data, _childern = (self, other), _op = "**")
+        out = Value(self.data ** other, _childern = (self, ), _op = f"**{other}")
 
         # out = self ** other
         # d(out) = other * self ** (other - 1) * d(self) + d(other) * self ** other * ln(self)
         def _backward():
-            self.grad += out.grad * other.data * self.data ** (other.data - 1)
-            other.grad += out.grad * out.data * math.log(self.data)
+            self.grad += out.grad * other * self.data ** (other - 1)
+            # other.grad += out.grad * out.data * math.log(self.data)
         
         out._backward = _backward
 
@@ -150,3 +151,46 @@ class Value:
         build_topo(self)
         for node in topo:
             node._backward()
+
+class Neuron:
+    def __init__(self, n_inputs) -> None:
+        self.w = [Value(random.uniform(-1, 1)) for _ in range(n_inputs)]
+        self.b = Value(random.uniform(-1, 1))
+    
+    def __call__(self, x):
+        act = sum((w.data*i for w,i in zip(self.w, x)), self.b)
+        out = act.tanh()
+        return out
+
+    def parameters(self):
+        return self.w + [self.b]
+
+class Layer:
+    def __init__(self, n_in, n_out) -> None:
+        self.neurons = [Neuron(n_in) for _ in range(n_out)]
+    
+    def __call__(self, x):
+        out = [n(x) for n in self.neurons]
+        return out
+    
+    def parameters(self):
+        return [param for n in self.neurons for param in n.parameters()]
+
+class MLP:
+    def __init__(self, n_input, n_outs) -> None:
+        ins = [n_input] + n_outs
+        self.layers = [Layer(ins[i], ins[i+1]) for i in range(len(n_outs))]
+    
+    def __call__(self, x):
+        temp = x
+        for layer in self.layers:
+            temp = layer(temp)
+        return temp
+    
+    def parameters(self):
+        return [param for layer in self.layers for param in layer.parameters()]
+    
+    def zero_grad(self):
+        for param in self.parameters():
+            param.grad = 0
+    
