@@ -16,25 +16,23 @@ class Operation(ABC):
 
 class OperationFactory:
     def __call__(self, op, node1, node2 = None):
-        self.op = op
-        
-        if node2:
+        if node2 is not None:
             if not isinstance(node2, Value):
                 node2 = Value(node2)
             
             def _backward():
-                grad1_update, grad2_update = self.op._backward(out.grad)
+                grad1_update, grad2_update = op._backward(out.grad)
                 node1.grad += grad1_update
                 node2.grad += grad2_update
             
-            out = Value(self.op(node1.data, node2.data), _childern = (node1, node2), _op = op.label)
+            out = Value(op(node1.data, node2.data), _childern = (node1, node2), _op = op.label)
             out._backward = _backward
         else:
             def _backward():
-                grad1_update, _ = self.op._backward(out.grad)
+                grad1_update, _ = op._backward(out.grad)
                 node1.grad += grad1_update
             
-            out = Value(self.op(node1.data, None), _childern = (node1, ), _op = op.label)
+            out = Value(op(node1.data, None), _childern = (node1, ), _op = op.label)
             out._backward = _backward
 
         return out
@@ -175,11 +173,13 @@ class Value:
         return f"{self.data}"
 
     def operate(self, other, op):
-        out = self.op_fact(op, self, other)
+        out = self.op_fact(op, node1=self, node2=other)
         return out
 
     def __add__(self, other):
         add = Addition()
+        # out = self.op_fact(add, self, other)
+        # return out
         return self.operate(other, add)
 
     def __radd__(self, other):
@@ -227,8 +227,8 @@ class Value:
     def __ge__(self, other):
         return self.data >= other.data
     
-    def __eq__(self, other):
-        return self.data == other.data
+    # def __eq__(self, other):
+    #     return self.data == other.data
 
     def __ne__(self, other):
         return self.data != other.data
