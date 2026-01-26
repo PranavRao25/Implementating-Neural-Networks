@@ -44,6 +44,4 @@ class MLP:
         for param in self.parameters():
             param.grad = 0
 
-# TODO: Refactor the Activation Function Class
-# TODO: Define a Loss Function Class
 # TODO: Documentation

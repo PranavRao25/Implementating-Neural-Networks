@@ -109,6 +109,50 @@ class Exp(Operation):
     def _backward(self, grad_out):
         return (self.out * grad_out, None)
 
+class Tanh(Operation):
+    def __init__(self, label = "tanh") -> None:
+        super().__init__(label)
+    
+    def __call__(self, data1, data2):
+        self.out = math.tanh(data1)
+        return self.out
+    
+    def _backward(self, grad_out):
+        return ((1 - self.out ** 2) * grad_out, None)
+
+class ReLU(Operation):
+    def __init__(self, label = "relu") -> None:
+        super().__init__(label)
+    
+    def __call__(self, data1, data2):
+        self.data = data1
+        return max(0.0, data1)
+    
+    def _backward(self, grad_out):
+        return (grad_out if self.data > 0.0 else 0.0, None)
+
+class LossFunction(ABC):
+    def __init__(self, label) -> None:
+        self.label = label
+
+    @abstractmethod
+    def __call__(self, data1, data2):
+        raise NotImplementedError
+
+class MSE(LossFunction):
+    def __init__(self, label = "mse") -> None:
+        super().__init__(label)
+
+    def __call__(self, data1, data2):
+        return (data1 - data2) ** 2
+    
+class MAE(LossFunction):
+    def __init__(self, label = "mae") -> None:
+        super().__init__(label)
+    
+    def __call__(self, data1, data2):
+        return data1 - data2 if data1 > data2 else data2 - data1
+
 class Value:
     def __init__(self, data, label="", _childern = (), _op = '') -> None:
         """
@@ -146,19 +190,7 @@ class Value:
         return self.operate(other, mul)
 
     def __rmul__(self, other):  # other * self
-        return self * other
-    
-    def tanh(self):
-        x = self.data
-        t = (math.exp(2*x) - 1) / (math.exp(2*x) + 1)
-        out = Value(t, _childern=(self,), _op="tanh")
-
-        def _backward():
-            self.grad += (1 - out.data ** 2) * out.grad
-
-        out._backward = _backward
-
-        return out
+        return self * other    
     
     def __sub__(self, other):
         sub = Subtraction()
@@ -182,6 +214,36 @@ class Value:
     def exp(self):
         exp = Exp()
         return self.operate(None, exp)
+
+    def __le__(self, other):
+        return self.data <= other.data
+
+    def __gt__(self, other):
+        return self.data > other.data
+
+    def __lt__(self, other):
+        return self.data < other.data
+    
+    def __ge__(self, other):
+        return self.data >= other.data
+    
+    def __eq__(self, other):
+        return self.data == other.data
+
+    def __ne__(self, other):
+        return self.data != other.data
+
+    def act(self, func):
+        out = self.op_fact(func, self, None)
+        return out
+
+    def tanh(self):
+        tanh = Tanh()
+        return self.act(tanh)
+
+    def relu(self):
+        relu = ReLU()
+        return self.act(relu)
 
     def backward(self):
         def build_topo(node):
