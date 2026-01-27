@@ -1,4 +1,4 @@
-from nn import *
+from src.nn import *
 
 def loss_fn(t, p):
     return (t - p) ** 2  # mse
@@ -22,11 +22,11 @@ for i in range(n_epochs):
     pred = [mlp(x)[0] for x in X]
     loss = sum(loss_fn(t, p) for t, p in zip(y, pred))
 
-    for param in mlp.parameters():
+    for param in mlp.parameters:
         param.grad = 0  # so that the grad of loss calculated is only for this new iteration
     loss.backward()
 
     print(f"{i} : {loss.data}")
 
-    for param in mlp.parameters():
+    for param in mlp.parameters:
         param.data += -lr * param.grad
